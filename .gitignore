@@ -1,0 +1,16 @@
+.DS_Store
+.build/
+.swiftpm/
+.board/
+DerivedData/
+*.xcodeproj
+*.xcworkspace
+*.xcuserstate
+*.xcuserdata/
+*.o
+*.d
+*.dia
+*.swiftdeps
+*.swiftdoc
+*.swiftmodule
+*.swiftsourceinfo
