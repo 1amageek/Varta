@@ -1,4 +1,5 @@
 import Foundation
+import VartaContract
 
 public struct QueuedControlCommand: Sendable, Hashable {
     public let command: MessagingControlCommand

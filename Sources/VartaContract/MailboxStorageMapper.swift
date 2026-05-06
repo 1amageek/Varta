@@ -10,7 +10,7 @@ public struct MailboxStorageMapper: Sendable, Hashable {
     }
 
     public init(
-        serviceRoot: URL = Varta.defaultServiceRoot(),
+        serviceRoot: URL = MessagingDefaults.defaultServiceRoot(),
         pathPolicy: MailboxPathPolicy = .allowAll
     ) {
         self.serviceRoot = serviceRoot

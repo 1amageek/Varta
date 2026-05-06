@@ -1,4 +1,5 @@
 import Foundation
+import VartaContract
 
 /// Filesystem submission daemon and local mailbox reader.
 public actor Varta {
@@ -15,8 +16,7 @@ public actor Varta {
     private let remoteTransport: (any RemoteMailboxTransport)?
 
     public static func defaultServiceRoot() -> URL {
-        let home = FileManager.default.homeDirectoryForCurrentUser
-        return home.appendingPathComponent("Messaging", isDirectory: true)
+        MessagingDefaults.defaultServiceRoot()
     }
 
     public init(

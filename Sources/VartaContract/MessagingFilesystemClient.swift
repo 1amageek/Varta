@@ -7,6 +7,11 @@ import Foundation
 /// the caller's mailbox after the daemon has registered and created it.
 public struct MessagingFilesystemClient: Sendable {
 
+    private enum Files {
+        static let command = "command.json"
+        static let envelope = "envelope.json"
+    }
+
     public let serviceRoot: URL
     public let pathPolicy: MailboxPathPolicy
 
@@ -15,7 +20,7 @@ public struct MessagingFilesystemClient: Sendable {
     }
 
     public init(
-        serviceRoot: URL = Varta.defaultServiceRoot(),
+        serviceRoot: URL = MessagingDefaults.defaultServiceRoot(),
         pathPolicy: MailboxPathPolicy = .allowAll
     ) {
         self.serviceRoot = serviceRoot
@@ -44,7 +49,7 @@ public struct MessagingFilesystemClient: Sendable {
         let target = pending.appendingPathComponent(command.id.uuidString, isDirectory: true)
         return try writeAtomically(
             value: command,
-            fileName: MessagingControlQueue.commandFileName,
+            fileName: Files.command,
             staging: staging,
             target: target
         )
@@ -60,7 +65,7 @@ public struct MessagingFilesystemClient: Sendable {
         let target = pending.appendingPathComponent(envelope.id.uuidString, isDirectory: true)
         return try writeAtomically(
             value: envelope,
-            fileName: FilesystemSubmissionQueue.envelopeFileName,
+            fileName: Files.envelope,
             staging: staging,
             target: target
         )

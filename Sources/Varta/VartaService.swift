@@ -1,4 +1,5 @@
 import Foundation
+import VartaContract
 
 public actor VartaService {
 

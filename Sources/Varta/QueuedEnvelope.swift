@@ -1,4 +1,5 @@
 import Foundation
+import VartaContract
 
 public struct QueuedEnvelope: Sendable, Hashable, Identifiable {
     public var id: UUID { envelope.id }

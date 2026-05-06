@@ -18,6 +18,13 @@ struct VartaDaemonCommand {
 
     private static func run(options: DaemonOptions) async throws {
         let daemon = try await Varta(serviceRoot: options.serviceRoot)
+        let echoService = options.e2eEchoAddress.map { address in
+            VartaEchoService(address: address, serviceRoot: options.serviceRoot)
+        }
+        if let e2eEchoAddress = options.e2eEchoAddress {
+            _ = try await daemon.registerMailbox(e2eEchoAddress)
+        }
+
         try writePID(to: options.pidFile)
         defer {
             removePID(at: options.pidFile)
@@ -28,16 +35,28 @@ struct VartaDaemonCommand {
         )
 
         if options.once {
-            _ = try await daemon.processControlCommands()
-            _ = try await daemon.processPending()
+            try await processCycle(daemon: daemon, echoService: echoService)
             return
         }
 
         while true {
             try Task.checkCancellation()
-            _ = try await daemon.processControlCommands()
-            _ = try await daemon.processPending()
+            try await processCycle(daemon: daemon, echoService: echoService)
             try await Task.sleep(for: options.pollInterval)
+        }
+    }
+
+    private static func processCycle(
+        daemon: Varta,
+        echoService: VartaEchoService?
+    ) async throws {
+        _ = try await daemon.processControlCommands()
+        _ = try await daemon.processPending()
+
+        guard let echoService else { return }
+        let replies = try echoService.process()
+        if !replies.isEmpty {
+            _ = try await daemon.processPending()
         }
     }
 
@@ -63,11 +82,15 @@ struct VartaDaemonCommand {
     }
 
     private static let helpText = """
-    Usage: vartad [--service-root PATH] [--pid-file PATH] [--poll-ms N] [--once]
+    Usage: vartad [--service-root PATH] [--pid-file PATH] [--poll-ms N] [--once] [--e2e-echo PATH]
 
     Watches the Varta filesystem submission outbox and routes
     pending envelopes to local mailboxes. Remote envelopes require a
     configured remote transport and otherwise remain in failed/.
+
+    --e2e-echo registers a local mailbox at PATH and replies to every
+    received envelope with the same payload. It is intended for daemon
+    end-to-end tests that must not depend on an agent runtime.
     """
 }
 
@@ -76,12 +99,14 @@ private struct DaemonOptions: Sendable {
     let pidFile: URL
     let pollInterval: Duration
     let once: Bool
+    let e2eEchoAddress: Address?
 
     init(arguments: [String]) throws {
         var serviceRoot: URL?
         var pidFile: URL?
         var pollMilliseconds = 250
         var once = false
+        var e2eEchoAddress: Address?
 
         var index = 0
         while index < arguments.count {
@@ -104,6 +129,9 @@ private struct DaemonOptions: Sendable {
                 pollMilliseconds = parsed
             case "--once":
                 once = true
+            case "--e2e-echo":
+                let path = try Self.value(after: argument, in: arguments, at: &index)
+                e2eEchoAddress = .local(path)
             default:
                 throw DaemonError.invalidArgument("unknown argument: \(argument)")
             }
@@ -117,6 +145,7 @@ private struct DaemonOptions: Sendable {
             .appendingPathComponent("vartad.pid")
         self.pollInterval = .milliseconds(pollMilliseconds)
         self.once = once
+        self.e2eEchoAddress = e2eEchoAddress
     }
 
     private static func value(

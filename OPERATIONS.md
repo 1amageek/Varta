@@ -100,6 +100,27 @@ Consumers should:
 4. write reply submissions before acking when a reply is required,
 5. move successfully processed envelopes to mapped `processed/`.
 
+## E2E Echo Mode
+
+`vartad` can run with an internal echo mailbox for daemon-level
+end-to-end tests:
+
+```bash
+vartad --service-root /tmp/VartaMessaging --e2e-echo /tmp/VartaEcho
+```
+
+The echo mode:
+
+1. registers `/tmp/VartaEcho` as a local mailbox,
+2. reads envelopes delivered to that mailbox,
+3. submits a reply envelope back to `Envelope.from`,
+4. preserves `mediaType` and `data`,
+5. sets `metadata["messaging.inReplyTo"]` to the request id,
+6. acks the request after the reply submission is durable.
+
+This mode is only a daemon test fixture. It must not become an agent
+runtime, task interpreter, or production conversation behavior.
+
 ## Observability
 
 Inspection tools can expose the durable state without becoming part of

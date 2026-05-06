@@ -1,4 +1,5 @@
 import Foundation
+import VartaContract
 
 public struct SubmissionQueueURLs: Sendable, Hashable {
     public let root: URL

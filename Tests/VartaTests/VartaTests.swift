@@ -185,6 +185,93 @@ struct VartaSuite {
         #expect(try client.receive(at: .local(dirs[1].path)).isEmpty)
     }
 
+    @Test("echo service replies without an agent runtime")
+    func echoServiceRepliesWithoutAgentRuntime() async throws {
+        let dirs = try makeTempMailboxes(count: 2, instantiate: false)
+        defer { cleanup(dirs) }
+        let serviceRoot = makeServiceRoot(for: dirs)
+        let client = MessagingFilesystemClient(serviceRoot: serviceRoot)
+        let daemon = try await Varta(serviceRoot: serviceRoot)
+        let sender = Address.local(dirs[0].path)
+        let echo = Address.local(dirs[1].path)
+        let echoService = VartaEchoService(address: echo, serviceRoot: serviceRoot)
+        let request = Envelope(
+            from: sender,
+            to: echo,
+            mediaType: "text/plain",
+            data: Data("echo this".utf8),
+            metadata: ["test.case": "varta.echo"]
+        )
+
+        _ = try await daemon.registerMailbox(sender)
+        _ = try await daemon.registerMailbox(echo)
+        try client.submit(request)
+        _ = try await daemon.processPending()
+
+        let replies = try echoService.process()
+        _ = try await daemon.processPending()
+
+        #expect(replies.count == 1)
+        #expect(replies.first?.from == echo)
+        #expect(replies.first?.to == sender)
+        #expect(replies.first?.data == request.data)
+        #expect(replies.first?.mediaType == request.mediaType)
+        #expect(replies.first?.causality == [request.id])
+        #expect(replies.first?.metadata["messaging.inReplyTo"] == request.id.uuidString)
+        #expect(replies.first?.metadata["varta.e2eEcho.kind"] == "reply")
+
+        let senderInbox = try client.receive(at: sender)
+        #expect(senderInbox.map(\.id) == replies.map(\.id))
+        #expect(try client.receive(at: echo).isEmpty)
+    }
+
+    @Test("vartad e2e echo replies through the filesystem contract")
+    func daemonEchoModeRepliesThroughFilesystemContract() async throws {
+        let dirs = try makeTempMailboxes(count: 2, instantiate: false)
+        defer { cleanup(dirs) }
+        let serviceRoot = makeServiceRoot(for: dirs)
+        let sender = Address.local(dirs[0].path)
+        let echo = Address.local(dirs[1].path)
+        let pidFile = serviceRoot
+            .appendingPathComponent("run", isDirectory: true)
+            .appendingPathComponent("vartad-e2e.pid")
+        let client = MessagingFilesystemClient(serviceRoot: serviceRoot)
+        let mapper = MailboxStorageMapper(serviceRoot: serviceRoot)
+        let senderRegistration = try mapper.registrationURL(for: sender)
+        let process = try startVartad(
+            serviceRoot: serviceRoot,
+            echoPath: echo.path,
+            pidFile: pidFile
+        )
+        defer {
+            stop(process)
+        }
+
+        try await waitUntilFileExists(pidFile)
+        _ = try client.registerMailbox(sender)
+        try await waitUntilFileExists(senderRegistration)
+
+        let request = Envelope(
+            from: sender,
+            to: echo,
+            mediaType: "text/plain",
+            data: Data("daemon echo".utf8),
+            metadata: ["test.case": "varta.daemon.echo"]
+        )
+        try client.submit(request)
+
+        let reply = try await waitForEnvelope(at: sender, serviceRoot: serviceRoot) { envelope in
+            envelope.metadata["messaging.inReplyTo"] == request.id.uuidString
+        }
+
+        #expect(reply.from == echo)
+        #expect(reply.to == sender)
+        #expect(reply.data == request.data)
+        #expect(reply.mediaType == request.mediaType)
+        #expect(reply.causality == [request.id])
+        #expect(reply.metadata["varta.e2eEcho.kind"] == "reply")
+    }
+
     @Test("malformed pending outbox is quarantined and later envelopes still deliver")
     func malformedPendingOutboxDoesNotBlockDelivery() async throws {
         let dirs = try makeTempMailboxes(count: 2, instantiate: false)
@@ -798,6 +885,79 @@ private func makeServiceRoot(for urls: [URL]) -> URL {
     return base.appendingPathComponent("Messaging", isDirectory: true)
 }
 
+private func startVartad(
+    serviceRoot: URL,
+    echoPath: String,
+    pidFile: URL
+) throws -> Process {
+    let process = Process()
+    process.executableURL = try vartadExecutableURL()
+    process.arguments = [
+        "--service-root", serviceRoot.path(percentEncoded: false),
+        "--pid-file", pidFile.path(percentEncoded: false),
+        "--poll-ms", "25",
+        "--e2e-echo", echoPath
+    ]
+    process.standardOutput = Pipe()
+    process.standardError = Pipe()
+    try process.run()
+    return process
+}
+
+private func vartadExecutableURL() throws -> URL {
+    let packageRoot = URL(fileURLWithPath: #filePath)
+        .deletingLastPathComponent()
+        .deletingLastPathComponent()
+        .deletingLastPathComponent()
+    let url = packageRoot
+        .appendingPathComponent(".build", isDirectory: true)
+        .appendingPathComponent("debug", isDirectory: true)
+        .appendingPathComponent("vartad", isDirectory: false)
+    guard FileManager.default.isExecutableFile(atPath: url.path(percentEncoded: false)) else {
+        throw TestSupportError.missingExecutable(url)
+    }
+    return url
+}
+
+private func waitUntilFileExists(
+    _ url: URL,
+    timeoutSeconds: TimeInterval = 5
+) async throws {
+    let deadline = Date().addingTimeInterval(timeoutSeconds)
+    while Date() < deadline {
+        if FileManager.default.fileExists(atPath: url.path(percentEncoded: false)) {
+            return
+        }
+        try await Task.sleep(for: .milliseconds(25))
+    }
+    throw TestSupportError.timeout("file did not appear: \(url.path(percentEncoded: false))")
+}
+
+private func waitForEnvelope(
+    at address: Address,
+    serviceRoot: URL,
+    timeoutSeconds: TimeInterval = 5,
+    matching predicate: (Envelope) -> Bool
+) async throws -> Envelope {
+    let client = MessagingFilesystemClient(serviceRoot: serviceRoot)
+    let deadline = Date().addingTimeInterval(timeoutSeconds)
+    while Date() < deadline {
+        let envelopes = try client.receive(at: address)
+        if let envelope = envelopes.first(where: predicate) {
+            return envelope
+        }
+        try await Task.sleep(for: .milliseconds(25))
+    }
+    throw TestSupportError.timeout("envelope did not arrive at \(address.path)")
+}
+
+private func stop(_ process: Process) {
+    guard process.isRunning else {
+        return
+    }
+    process.terminate()
+}
+
 private func cleanup(_ urls: [URL]) {
     for url in urls {
         do {
@@ -809,6 +969,20 @@ private func cleanup(_ urls: [URL]) {
         do {
             try FileManager.default.removeItem(at: parent)
         } catch {
+        }
+    }
+}
+
+private enum TestSupportError: Error, CustomStringConvertible {
+    case missingExecutable(URL)
+    case timeout(String)
+
+    var description: String {
+        switch self {
+        case .missingExecutable(let url):
+            return "missing executable: \(url.path(percentEncoded: false))"
+        case .timeout(let message):
+            return message
         }
     }
 }

@@ -12,6 +12,7 @@ let package = Package(
     ],
     products: [
         .executable(name: "vartad", targets: ["VartaDaemon"]),
+        .library(name: "VartaContract", targets: ["VartaContract"]),
         .library(name: "Varta", targets: ["Varta"]),
         .library(name: "VartaP2P", targets: ["VartaP2P"])
     ],
@@ -24,7 +25,11 @@ let package = Package(
             name: "VartaDaemon",
             dependencies: ["Varta"]
         ),
-        .target(name: "Varta"),
+        .target(name: "VartaContract"),
+        .target(
+            name: "Varta",
+            dependencies: ["VartaContract"]
+        ),
         .target(
             name: "VartaP2P",
             dependencies: [

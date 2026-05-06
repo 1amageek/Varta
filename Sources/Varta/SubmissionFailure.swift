@@ -1,4 +1,5 @@
 import Foundation
+import VartaContract
 
 public struct SubmissionFailure: Sendable, Codable, Hashable {
     public let envelopeID: UUID

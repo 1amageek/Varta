@@ -1,32 +1,32 @@
 import Foundation
 
-enum MailboxCodec {
+public enum MailboxCodec {
 
-    static func encode<T: Encodable>(_ value: T) throws -> Data {
+    public static func encode<T: Encodable>(_ value: T) throws -> Data {
         try makeEncoder().encode(value)
     }
 
-    static func encode(_ envelope: Envelope) throws -> Data {
+    public static func encode(_ envelope: Envelope) throws -> Data {
         try makeEncoder().encode(envelope)
     }
 
-    static func decodeEnvelope(from data: Data) throws -> Envelope {
+    public static func decodeEnvelope(from data: Data) throws -> Envelope {
         try makeDecoder().decode(Envelope.self, from: data)
     }
 
-    static func encodeRemoteRequest(_ request: RemoteEnvelopeDeliveryRequest) throws -> Data {
+    public static func encodeRemoteRequest(_ request: RemoteEnvelopeDeliveryRequest) throws -> Data {
         try makeEncoder().encode(request)
     }
 
-    static func decodeRemoteRequest(from data: Data) throws -> RemoteEnvelopeDeliveryRequest {
+    public static func decodeRemoteRequest(from data: Data) throws -> RemoteEnvelopeDeliveryRequest {
         try makeDecoder().decode(RemoteEnvelopeDeliveryRequest.self, from: data)
     }
 
-    static func encodeRemoteResponse(_ response: RemoteEnvelopeDeliveryResponse) throws -> Data {
+    public static func encodeRemoteResponse(_ response: RemoteEnvelopeDeliveryResponse) throws -> Data {
         try makeEncoder().encode(response)
     }
 
-    static func decodeRemoteResponse(from data: Data) throws -> RemoteEnvelopeDeliveryResponse {
+    public static func decodeRemoteResponse(from data: Data) throws -> RemoteEnvelopeDeliveryResponse {
         try makeDecoder().decode(RemoteEnvelopeDeliveryResponse.self, from: data)
     }
 

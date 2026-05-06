@@ -155,6 +155,20 @@ Registry entries live under:
                 └── registration.json
 ```
 
+## E2E Echo Mode
+
+For daemon end-to-end tests, `vartad` can expose a local echo mailbox
+without connecting to any agent runtime:
+
+```bash
+vartad --service-root /tmp/VartaMessaging --e2e-echo /tmp/VartaEcho
+```
+
+Messages sent to the echo address are replied to with the same payload.
+The reply is submitted through the same outbox path and includes
+`messaging.inReplyTo`, so tests exercise Varta routing without requiring
+an application-specific agent.
+
 ## Invariants
 
 1. Filesystem is the inter-process API.
