@@ -1,6 +1,6 @@
 # Varta
 
-![Varta logo](Assets/varta-logo.png)
+<img src="Assets/varta-logo.png" alt="Varta logo" width="120">
 
 Varta is a filesystem submission contract and delivery daemon
 for agent-to-agent messages.
