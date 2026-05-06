@@ -5,6 +5,36 @@
 Varta is a filesystem submission contract and delivery daemon
 for agent-to-agent messages.
 
+## Why Varta
+
+Agent systems often grow into tightly coupled networks: one process calls
+another process directly, local delivery uses one path, remote delivery
+uses another path, and failures disappear into logs that are difficult to
+inspect.
+
+Varta keeps the boundary simple. Agents submit durable envelopes into a
+filesystem outbox. A daemon claims those envelopes, routes them to a
+local mailbox or a remote peer, and records the result as filesystem
+state.
+
+```mermaid
+flowchart LR
+    Producer["Agent producer"] -->|"write envelope"| Outbox["outbox/pending"]
+    Outbox --> Daemon["Varta daemon"]
+    Daemon -->|"local"| Inbox["mapped inbox"]
+    Daemon -->|"peer:*"| Peer["remote Varta"]
+    Inbox --> Consumer["Agent consumer"]
+```
+
+This gives agent runtimes four useful properties:
+
+| Property | Meaning |
+|---|---|
+| Loose coupling | Producers do not link to recipient runtimes or write into recipient working directories. |
+| Uniform routing | Local and remote messages use the same submission contract. |
+| Durable observability | Pending, sent, failed, processed, and quarantined messages are visible on disk. |
+| Recoverable operation | Malformed or failed messages become durable records instead of stopping the whole system. |
+
 The default service root is `~/Messaging`. Producers do not call a Swift
 method, CLI, or direct recipient path as the process contract. They place
 an envelope in the managed outbox:
