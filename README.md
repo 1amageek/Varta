@@ -28,7 +28,7 @@ The daemon claims pending submissions, then routes them by `Envelope.to`:
 
 ```mermaid
 flowchart LR
-    Producer["Board / Bioid / Agent"] --> Pending["outbox/pending"]
+    Producer["Agent process"] --> Pending["outbox/pending"]
     Pending --> Daemon["Varta daemon"]
     Daemon -->|"host == local"| Local["~/Messaging mapped inbox"]
     Daemon -->|"host == peer:*"| Remote["remote Varta"]
@@ -54,7 +54,7 @@ daemon-to-daemon remote delivery uses P2P/API transport.
 | `FilesystemSubmissionQueue` | Writes and claims `outbox/pending/<id>/envelope.json`. |
 | `MailboxStorageMapper` | Maps `Address.path` into `~/Messaging/mailboxes/...`. |
 | `MailboxRegistry` | Records valid mailbox roots. |
-| `MessagingControlCommand` | P0 mailbox lifecycle operation requested through the filesystem. |
+| `MessagingControlCommand` | Mailbox lifecycle operation requested through the filesystem. |
 | `Varta` | Daemon-side processor for control commands, pending submissions, receive, and ack. |
 | `VartaService` | Remote receiver that validates and stores P2P deliveries locally. |
 
@@ -65,10 +65,10 @@ state is centralized under the Messaging service root:
 
 ```text
 Address.path:
-  /Users/1amageek/Desktop/workspace 2
+  /Users/example/Agents/planner
 
 Mailbox root:
-  /Users/1amageek/Messaging/mailboxes/local/Users/1amageek/Desktop/workspace 2
+  /Users/example/Messaging/mailboxes/local/Users/example/Agents/planner
 ```
 
 Mailbox layout:
@@ -92,7 +92,8 @@ Mailbox layout:
 
 ## Control Plane
 
-Board can act as the human P0 control plane by writing control commands:
+Management tools can request mailbox lifecycle changes by writing control
+commands:
 
 ```text
 ~/Messaging/

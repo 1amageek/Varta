@@ -278,13 +278,13 @@ struct VartaSuite {
         _ = try await daemon.mailboxURLs(for: .local(dirs[0].path))
     }
 
-    @Test("garbage collection includes hidden Board mailbox paths")
-    func garbageCollectionIncludesHiddenBoardMailboxPaths() throws {
+    @Test("garbage collection includes hidden mailbox paths")
+    func garbageCollectionIncludesHiddenMailboxPaths() throws {
         let dirs = try makeTempMailboxes(count: 1, instantiate: false)
         defer { cleanup(dirs) }
         let serviceRoot = makeServiceRoot(for: dirs)
         let processed = serviceRoot
-            .appendingPathComponent("mailboxes/local/tmp/project/.board/messaging/agent/processed", isDirectory: true)
+            .appendingPathComponent("mailboxes/local/tmp/project/.agent/messaging/worker/processed", isDirectory: true)
         try FileManager.default.createDirectory(at: processed, withIntermediateDirectories: true)
         let stale = processed.appendingPathComponent("stale.json")
         try Data("{}".utf8).write(to: stale)

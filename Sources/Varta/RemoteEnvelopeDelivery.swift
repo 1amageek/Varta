@@ -1,6 +1,6 @@
 import Foundation
 
-public let vartaRemoteEnvelopeProtocolID = "/bioid/varta/envelope/1"
+public let vartaRemoteEnvelopeProtocolID = "/varta/envelope/1"
 
 public struct RemoteEnvelopeDeliveryRequest: Sendable, Codable, Hashable {
     public let envelope: Envelope

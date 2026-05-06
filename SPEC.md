@@ -1,7 +1,7 @@
 # Varta Specification
 
 Varta is a filesystem-backed submission and mailbox contract
-for independent agent, Bioid, Board, and robot processes.
+for independent agent processes.
 
 The central rule is:
 
@@ -15,7 +15,7 @@ allowing daemon-to-daemon P2P transport for remote machines.
 ## Goals
 
 - Use the filesystem as the canonical inter-process API.
-- Keep Board, Bioid, directory agents, and Varta as independent
+- Keep producers, consumers, management tools, and Varta as independent
   processes.
 - Preserve a human-inspectable message trail.
 - Route local and remote recipients through the same submission shape.
@@ -84,9 +84,8 @@ Reserved metadata prefixes:
 | Prefix | Owner |
 |---|---|
 | `messaging.` | Varta transport and mailbox metadata |
-| `bioid.` | Bioid runtime metadata |
-| `board.` | Board application metadata |
-| `agent.` | Directory-agent metadata |
+| `agent.` | Agent runtime metadata |
+| `app.` | Application-specific metadata |
 
 Replies should include the request id in both `causality` and
 `metadata["messaging.inReplyTo"]`.
@@ -156,8 +155,8 @@ Recipient mailbox layout:
 directory. Varta maps it into the service root:
 
 ```text
-/Users/1amageek/Desktop/workspace 2
-  -> ~/Messaging/mailboxes/local/Users/1amageek/Desktop/workspace 2
+/Users/example/Agents/planner
+  -> ~/Messaging/mailboxes/local/Users/example/Agents/planner
 ```
 
 Remote peers use a namespace under `mailboxes/peers/<peer-id>/`.
@@ -180,8 +179,7 @@ Delivery must not create arbitrary mailbox roots without registration.
 
 ## Control Plane
 
-Board and other management tools request P0 operations through control
-commands:
+Management tools request mailbox lifecycle operations through control commands:
 
 ```text
 ~/Messaging/
@@ -253,7 +251,7 @@ envelope on its own filesystem.
 Protocol id:
 
 ```text
-/bioid/messaging-actor/envelope/1
+/varta/envelope/1
 ```
 
 ```swift

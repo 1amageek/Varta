@@ -7,24 +7,24 @@ submission contract described in `SPEC.md`.
 
 ```mermaid
 flowchart LR
-    Board["Board process"] -->|write submission/control| Root["~/Messaging"]
-    Bioid["Bioid process"] -->|write submission| Root
-    Agent["Directory agent"] -->|write submission| Root
+    Producer["Agent producer"] -->|write submission| Root["~/Messaging"]
+    Manager["Management tool"] -->|write control| Root
+    Consumer["Agent consumer"] -->|read inbox / ack| Root
     Daemon["Varta daemon"] -->|claim and route| Root
     Daemon --> Local["mapped local inbox"]
     Daemon --> Remote["remote Varta over P2P"]
 ```
 
-Board, Bioid, and directory agents do not call each other directly.
-They also do not need separate local and remote send paths. Their stable
-operation is to place an envelope submission in the managed outbox.
+Agent processes do not need to call each other directly. They also do
+not need separate local and remote send paths. Their stable operation is
+to place an envelope submission in the managed outbox.
 
 ## Roles
 
 | Role | Responsibility | Must Not |
 |---|---|---|
 | Producer | Create an envelope and place it in `outbox/pending`. | Write directly to a remote path. |
-| Board P0 control | Write lifecycle commands to `control/pending`. | Mutate in-flight daemon state directly. |
+| Management tool | Write lifecycle commands to `control/pending`. | Mutate in-flight daemon state directly. |
 | Varta daemon | Claim submissions/control commands, route local/remote, write durable state. | Interpret task semantics or mutate payload data. |
 | Consumer | Read its mapped `inbox/`, process envelopes, ack completed messages. | Delete unprocessed envelopes. |
 | Remote service | Accept P2P delivery requests and store them under authorized roots. | Allow arbitrary filesystem writes. |
@@ -63,7 +63,7 @@ state has been written.
 
 ```mermaid
 stateDiagram-v2
-    [*] --> pending: Board writes command
+    [*] --> pending: management tool writes command
     pending --> processing: daemon claim
     processing --> applied: registry/storage updated
     processing --> rejected: explicit failure
@@ -102,7 +102,8 @@ Consumers should:
 
 ## Observability
 
-Varta.app should be a human inspection and intervention tool:
+Inspection tools can expose the durable state without becoming part of
+the routing contract:
 
 | View | Source |
 |---|---|
@@ -112,7 +113,7 @@ Varta.app should be a human inspection and intervention tool:
 | Failed messages | `outbox/failed` and `failure.json` |
 | Quarantined items | `quarantine/malformed`, `quarantine/orphaned`, and `quarantine/unauthorized` |
 | Mailbox registry | `registry/mailboxes` |
-| P0 control history | `control/applied` and `control/rejected` |
+| Control history | `control/applied` and `control/rejected` |
 | Conversation timeline | Envelope ids, causality, metadata, and receipt state |
 
 Finder remains valid because the filesystem is the contract.
